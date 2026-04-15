@@ -22,7 +22,7 @@ router.get("/:id", (req, res) => {
 // GET /todos/search — search by title keyword
 router.get("/search", (req, res) => {
   const q = req.query.q;
-  const results = todos.filter((t) => q && q.trim() !== '' && t.title.includes(q));
+  const results = todos.filter((t) => q && typeof q === 'string' && q.trim() !== '' && t.title.includes(q));
   res.json(results);
 });
 

@@ -1,7 +1,7 @@
 {
   "verdict": "FAIL",
   "confidence": 85,
-  "summary": "The search functionality has critical issues related to handling undefined or empty query parameters and lacks input validation, which poses security risks. These issues must be addressed before merging.",
+  "summary": "The search functionality has critical issues related to error handling and input validation that must be addressed before merging. The lack of handling for undefined or empty query parameters poses a risk of runtime errors, and the absence of input validation exposes the system to potential injection attacks.",
   "findings": [
     {
       "severity": "critical",
