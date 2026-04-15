@@ -230,6 +230,10 @@ async function main() {
     };
   }
 
+  // Persist critique for the fix-agent to consume as a workflow artifact
+  const fs = require('fs');
+  fs.writeFileSync('critique.json', JSON.stringify(critique, null, 2));
+
   // --------------- Build PR comment ---------------
 
   const verdictEmoji = { PASS: '✅', WARN: '⚠️', FAIL: '🚫' };
@@ -296,7 +300,6 @@ async function main() {
   // --------------- Output for workflow ---------------
 
   // Write outputs for the workflow to read
-  const fs = require('fs');
   const outputFile = process.env.GITHUB_OUTPUT;
   if (outputFile) {
     fs.appendFileSync(outputFile, `verdict=${critique.verdict}\n`);
