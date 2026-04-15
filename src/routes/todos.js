@@ -21,15 +21,22 @@ router.get("/:id", (req, res) => {
 
 // POST /todos — create
 router.post("/", (req, res) => {
-  const { title } = req.body;
+  const { title, priority } = req.body;
   if (!title || typeof title !== "string" || title.trim() === "") {
     return res
       .status(400)
       .json({ error: "title is required and must be a non-empty string" });
   }
+  const validPriorities = ["low", "medium", "high"];
+  if (priority !== undefined && !validPriorities.includes(priority)) {
+    return res
+      .status(400)
+      .json({ error: "priority must be low, medium, or high" });
+  }
   const todo = {
     id: nextId++,
     title: title.trim(),
+    priority: priority || "medium",
     done: false,
     createdAt: new Date().toISOString(),
   };
