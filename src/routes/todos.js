@@ -19,6 +19,13 @@ router.get("/:id", (req, res) => {
   res.json(todo);
 });
 
+// GET /todos/search — search by title keyword
+router.get("/search", (req, res) => {
+  const q = req.query.q;
+  const results = todos.filter((t) => t.title.includes(q));
+  res.json(results);
+});
+
 // POST /todos — create
 router.post("/", (req, res) => {
   const { title } = req.body;
