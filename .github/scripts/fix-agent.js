@@ -3,15 +3,15 @@
 /**
  * Fix Agent — Self-Healing Loop
  *
- * Reads the critique JSON produced by ai-review.js, calls OpenAI to generate
+ * Reads the critique JSON produced by ai-review.js, calls Claude to generate
  * surgical find-and-replace patches for every critical/high finding, and
  * applies them to the files on disk.  The workflow then commits and pushes
  * the changes with FIX_AGENT_PAT so the push re-triggers ai-review.yml,
  * creating the review → fix → re-review loop.
  *
  * Required env vars:
- *   OPENAI_API_KEY   — OpenAI key
- *   GITHUB_TOKEN     — for GitHub API (read PR files, post comments)
+ *   ANTHROPIC_API_KEY — Anthropic key
+ *   GITHUB_TOKEN      — for GitHub API (read PR files, post comments)
  *   CRITIQUE_FILE    — path to critique.json (default: critique.json)
  *   REPO_OWNER       — e.g. "taroserigano777"
  *   REPO_NAME        — e.g. "test-agentic-workflo___2"
@@ -61,6 +61,9 @@ function callClaude(systemPrompt, userPrompt) {
       let data = '';
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          return reject(new Error(`Claude API HTTP ${res.statusCode}: ${data.slice(0, 300)}`));
+        }
         try {
           const parsed = JSON.parse(data);
           if (parsed.error) return reject(new Error(parsed.error.message));
@@ -204,8 +207,8 @@ async function main() {
     .map((f, i) => `${i + 1}. [${f.severity}] (${f.agent}): ${f.description}`)
     .join('\n');
 
-  // 3. Ask OpenAI for patches
-  console.log('\nCalling OpenAI for fix patches...');
+  // 3. Ask Claude for patches
+  console.log('\nCalling Claude for fix patches...');
   const rawPatches = await callClaude(
     FIX_SYSTEM_PROMPT,
     `## Files\n${fileContext}\n\n## Findings to Fix\n${findingsList}`

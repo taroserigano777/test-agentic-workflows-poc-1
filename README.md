@@ -1,6 +1,6 @@
 # Todo API — AI-Powered GitHub Actions Demo
 
-A simple Node.js/Express REST API demonstrating a fully automated, self-healing CI/CD pipeline powered by GitHub Actions and multi-agent AI review using GPT-4 mini.
+A Node.js/Express REST API demonstrating a fully automated, self-healing CI/CD pipeline powered by GitHub Actions and a multi-agent AI review system using Claude Sonnet 4.6.
 
 ---
 
@@ -88,7 +88,7 @@ PR opened / updated
 │     ▼                                     in the GitHub Actions UI
 │  🔧 Fix Agent (max 3 iterations)                 │
 │     - Reads medium + critical findings           ▼
-│     - Sends code + findings to GPT-4 mini   ✅ Auto-merge (squash)
+│     - Sends code + findings to Claude Sonnet ✅ Auto-merge (squash)
 │     - Applies fixes to source files
 │     - Commits as fix-agent[bot]
 │     - Pushes with PAT → triggers workflow again
@@ -205,7 +205,7 @@ Auto-generates changelog from commit messages.
 ├── .github/
 │   ├── dependabot.yml      Weekly npm + actions updates
 │   ├── scripts/
-│   │   ├── ai-review.js    Multi-agent review pipeline (GPT-4 mini)
+│   │   ├── ai-review.js    Multi-agent review pipeline (Claude Sonnet 4.6)
 │   │   └── fix-agent.js    Self-healing fix agent
 │   └── workflows/
 │       ├── ai-review.yml   AI review + fix loop + human gate + auto-merge
@@ -243,7 +243,7 @@ Auto-generates changelog from commit messages.
 ### Prerequisites
 - Node.js 18+
 - GitHub account
-- OpenAI API key (for AI review agents)
+- Anthropic API key (for AI review agents)
 
 ### Local development
 ```bash
@@ -257,7 +257,7 @@ npm run lint      # run ESLint
 
 | Secret | Purpose |
 |--------|---------|
-| `OPENAI_API_KEY` | Powers all 4 AI review agents |
+| `ANTHROPIC_API_KEY` | Powers all 4 AI review agents (Claude Sonnet 4.6) |
 | `FIX_AGENT_PAT` | PAT with `repo` scope — allows Fix Agent commits to re-trigger workflows |
 
 ### GitHub Environment required
@@ -287,7 +287,7 @@ When the AI Review pipeline reaches a `PASS` verdict with sufficient confidence:
 | Tests | Jest, Supertest |
 | Lint | ESLint |
 | CI/CD | GitHub Actions |
-| AI Agents | OpenAI GPT-4 mini (`gpt-4o-mini`) |
+| AI Agents | Anthropic Claude (`claude-sonnet-4-6`) with prompt caching |
 | GitHub API | `actions/github-script`, native REST |
 | Dependency updates | Dependabot |
 # test-agentic-workflo__

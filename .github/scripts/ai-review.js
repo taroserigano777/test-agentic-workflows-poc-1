@@ -3,10 +3,10 @@
 /**
  * Multi-Agent AI PR Review Pipeline
  * Agents: Reviewer, Editor, Security → Critique (synthesizer)
- * Uses OpenAI GPT-4 mini
+ * Uses Anthropic Claude (claude-sonnet-4-6) with prompt caching
  *
  * Environment variables required:
- *   OPENAI_API_KEY, GITHUB_TOKEN, PR_DIFF, PR_TITLE, PR_BODY, PR_NUMBER, REPO_OWNER, REPO_NAME
+ *   ANTHROPIC_API_KEY, GITHUB_TOKEN, PR_DIFF, PR_TITLE, PR_BODY, PR_NUMBER, REPO_OWNER, REPO_NAME
  *   REVIEW_MODE: "observer" | "suggest" | "auto"
  */
 
@@ -59,6 +59,9 @@ function callClaude(systemPrompt, userPrompt) {
       let data = '';
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          return reject(new Error(`Claude API HTTP ${res.statusCode}: ${data.slice(0, 300)}`));
+        }
         try {
           const parsed = JSON.parse(data);
           if (parsed.error) return reject(new Error(parsed.error.message));
@@ -229,7 +232,8 @@ async function main() {
 
   let critique;
   try {
-    critique = JSON.parse(critiqueRaw);
+    const cleaned = critiqueRaw.replace(/^```[a-z]*\n?/m, '').replace(/```$/m, '').trim();
+    critique = JSON.parse(cleaned);
   } catch {
     console.error('Critique Agent returned invalid JSON, falling back to WARN.');
     critique = {
