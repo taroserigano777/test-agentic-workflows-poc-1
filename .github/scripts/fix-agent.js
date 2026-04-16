@@ -3,7 +3,7 @@
 /**
  * Fix Agent — Self-Healing Loop
  *
- * Reads the critique JSON produced by ai-review.js, calls OpenAI to generate
+ * Reads the critique JSON produced by ai-review.js, calls Claude to generate
  * surgical find-and-replace patches for every critical/high finding, and
  * applies them to the files on disk.  The workflow then commits and pushes
  * the changes with FIX_AGENT_PAT so the push re-triggers ai-review.yml,
@@ -61,6 +61,9 @@ function callClaude(systemPrompt, userPrompt) {
       let data = '';
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          return reject(new Error(`Claude API HTTP ${res.statusCode}: ${data.slice(0, 300)}`));
+        }
         try {
           const parsed = JSON.parse(data);
           if (parsed.error) return reject(new Error(parsed.error.message));

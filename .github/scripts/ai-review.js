@@ -59,6 +59,9 @@ function callClaude(systemPrompt, userPrompt) {
       let data = '';
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          return reject(new Error(`Claude API HTTP ${res.statusCode}: ${data.slice(0, 300)}`));
+        }
         try {
           const parsed = JSON.parse(data);
           if (parsed.error) return reject(new Error(parsed.error.message));
@@ -229,7 +232,8 @@ async function main() {
 
   let critique;
   try {
-    critique = JSON.parse(critiqueRaw);
+    const cleaned = critiqueRaw.replace(/^```[a-z]*\n?/m, '').replace(/```$/m, '').trim();
+    critique = JSON.parse(cleaned);
   } catch {
     console.error('Critique Agent returned invalid JSON, falling back to WARN.');
     critique = {
