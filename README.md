@@ -87,10 +87,10 @@ PR opened / updated
 │     │                                     🧑 You approve/reject
 │     ▼                                     in the GitHub Actions UI
 │  🔧 Fix Agent (max 3 iterations)                 │
-│     - Reads medium + critical findings           ▼
+│     - Reads critical/high findings                ▼
 │     - Sends code + findings to Claude Sonnet ✅ Auto-merge (squash)
-│     - Applies fixes to source files
-│     - Commits as fix-agent[bot]
+│     - Generates surgical find-and-replace patches
+│     - Commits as Fix Agent
 │     - Pushes with PAT → triggers workflow again
 │          │
 │          └──► Loop back to Reviewer / Editor / Security / Critique
@@ -230,7 +230,6 @@ Auto-generates changelog from commit messages.
 |--------|------|-------------|
 | `GET` | `/health` | Health check |
 | `GET` | `/todos` | List all todos |
-| `GET` | `/todos?q=keyword` | Search todos by title |
 | `GET` | `/todos/:id` | Get single todo |
 | `POST` | `/todos` | Create todo `{ title }` |
 | `PATCH` | `/todos/:id` | Update todo `{ title?, done? }` |
@@ -258,11 +257,13 @@ npm run lint      # run ESLint
 | Secret | Purpose |
 |--------|---------|
 | `ANTHROPIC_API_KEY` | Powers all 4 AI review agents (Claude Sonnet 4.6) |
-| `FIX_AGENT_PAT` | PAT with `repo` scope — allows Fix Agent commits to re-trigger workflows |
+| `FIX_AGENT_PAT` | Classic PAT with `repo` + `workflow` scopes — allows Fix Agent to push commits and re-trigger workflows |
 
 ### GitHub Environment required
 
-Create a `production` environment in **Repo → Settings → Environments** with yourself as a required reviewer. This is the human approval gate before auto-merge.
+Create a `production` environment in **Repo → Settings → Environments** and add yourself as a required reviewer. This is the human approval gate before auto-merge.
+
+> **Note:** Required reviewers on environments require a paid GitHub plan (Pro/Team/Enterprise). On a free plan the environment exists but the approval gate is skipped.
 
 ---
 
@@ -290,4 +291,18 @@ When the AI Review pipeline reaches a `PASS` verdict with sufficient confidence:
 | AI Agents | Anthropic Claude (`claude-sonnet-4-6`) with prompt caching |
 | GitHub API | `actions/github-script`, native REST |
 | Dependency updates | Dependabot |
-# test-agentic-workflo__
+
+---
+
+## Security Hardening
+
+The pipeline includes the following security and robustness measures:
+
+- **Diff fetch failures hard-fail** — review cannot be silently bypassed
+- **Diff passed as file path** — avoids shell env var size limits on large PRs
+- **Diff truncation warning** — explicit log when PR exceeds 12K char limit
+- **HTTP status checks** — Claude API and GitHub API errors produce clear messages
+- **Path traversal validation** — fix agent blocks `../` and absolute paths in PR file reads
+- **30s API timeouts** — prevents hung Claude calls from consuming the 6-hour job limit
+- **Concurrency controls** — all PR workflows use `cancel-in-progress` to prevent racing
+- **Safe crash defaults** — on error, workflow outputs default to `FAIL` / `confidence=0`
