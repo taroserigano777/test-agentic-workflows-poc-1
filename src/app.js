@@ -2,6 +2,7 @@
 
 const express = require('express');
 const todosRouter = require('./routes/todos');
+const adminRouter = require('./routes/admin');
 
 const app = express();
 
@@ -12,6 +13,7 @@ app.get('/health', (_req, res) => {
 });
 
 app.use('/todos', todosRouter);
+app.use('/admin', adminRouter);
 
 // 404 handler
 app.use((_req, res) => {
