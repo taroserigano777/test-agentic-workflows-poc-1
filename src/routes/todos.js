@@ -27,14 +27,17 @@ router.post("/", (req, res) => {
       .status(400)
       .json({ error: "title is required and must be a non-empty string" });
   }
-  if (dueDate !== undefined && isNaN(Date.parse(dueDate))) {
-    return res.status(400).json({ error: "dueDate must be a valid ISO date string" });
+  if (dueDate !== undefined) {
+    const isoRegex = /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z?([+-]\d{2}:\d{2})?)?$/;
+    if (typeof dueDate !== 'string' || !isoRegex.test(dueDate) || isNaN(Date.parse(dueDate))) {
+      return res.status(400).json({ error: "dueDate must be a valid ISO date string" });
+    }
   }
   const todo = {
     id: nextId++,
     title: title.trim(),
     done: false,
-    dueDate: dueDate || null,
+    dueDate: dueDate ?? null,
     createdAt: new Date().toISOString(),
   };
   todos.push(todo);

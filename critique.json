@@ -1,27 +1,32 @@
 {
   "verdict": "WARN",
   "confidence": 88,
-  "summary": "The PR introduces a dueDate field with two substantive issues flagged consistently across all three agents: (1) use of || instead of ?? for the null fallback, which could silently drop falsy-but-meaningful values, and (2) overly permissive date validation via Date.parse that accepts non-ISO-8601 strings contrary to the stated contract. A nit around missing normalization of the stored date string and a low-confidence concern about the model name string in CI scripts round out the findings. None of these are critical blockers, but the ISO format validation gap and the || vs ?? issue are medium-severity concerns that should be addressed before merge to avoid subtle bugs downstream.",
+  "summary": "The PR contains no critical security vulnerabilities or blocking correctness failures, but has several notable issues worth addressing before merge. The most impactful are: use of `||` instead of `??` for the `dueDate` fallback (semantic bug that could silently discard valid input), and overly permissive `Date.parse` validation that accepts non-ISO-8601 formats contrary to the documented API contract. Secondary issues include lack of a `typeof` string guard on `dueDate`, no normalization of stored date strings, and a committed CI artifact (`critique.json`) that should be gitignored. None of these are blockers in isolation, but the `??` fix and stricter ISO validation together represent meaningful correctness improvements that should ideally land in this PR.",
   "findings": [
     {
-      "severity": "medium",
+      "severity": "high",
+      "agent": "editor",
+      "description": "`dueDate: dueDate || null` uses `||` instead of `??`, causing empty strings to be silently coerced to null rather than being caught by validation or preserved. The correct operator is `??`, which only falls back on `undefined` or `null`. Fix: `dueDate: dueDate ?? null`."
+    },
+    {
+      "severity": "high",
       "agent": "reviewer",
-      "description": "Date.parse accepts many non-ISO-8601 formats (e.g., 'January 1, 2025', '2025/01/01') that should be rejected per the stated contract. The validation check using isNaN(Date.parse(dueDate)) does not enforce ISO 8601 format. A stricter regex or purpose-built parser (e.g., /^\\d{4}-\\d{2}-\\d{2}(T[\\d:.]+Z?)?$/) should be used to match the API's documented requirement."
+      "description": "`Date.parse` is too permissive for ISO 8601 validation — it accepts formats like `\"January 1, 2025\"` and `\"2025/01/01\"`, contradicting the documented API contract and the 400 error message. Replace with a strict regex such as `/^\\d{4}-\\d{2}-\\d{2}(T[\\d:.]+Z?([+-]\\d{2}:\\d{2})?)?$/` combined with a `Date.parse` guard to also reject calendar-invalid dates."
     },
     {
       "severity": "medium",
       "agent": "editor",
-      "description": "dueDate: dueDate || null should be dueDate: dueDate ?? null. The || operator coerces any falsy value (empty string, 0, false) to null, silently discarding provided values. The nullish coalescing operator ?? only falls back to null for undefined or null, which is the correct semantic here."
+      "description": "`dueDate` is stored verbatim without normalization. Semantically identical timestamps in different formats (e.g., `\"2025-06-15T00:00:00Z\"` vs `\"2025-06-15T00:00:00+00:00\"`) will be stored differently, making future sorting, comparison, or equality checks unreliable. After validation, normalize with `new Date(dueDate).toISOString()`."
     },
     {
       "severity": "low",
       "agent": "reviewer",
-      "description": "Model name 'claude-sonnet-4-6' in .github/scripts/ai-review.js and fix-agent.js does not follow Anthropic's published versioning convention (e.g., 'claude-3-5-sonnet-20241022'). This may cause silent API errors or resolve to an unexpected model at runtime. The correct versioned identifier should be confirmed from the Anthropic API docs."
+      "description": "`dueDate` is not type-checked before being passed to `Date.parse`. Non-string values like the number `20250101` can be coerced into a valid parse result, bypassing the format restriction. A `typeof dueDate !== 'string'` guard (and optionally a max-length check) should precede the date validation logic, consistent with how `title` is validated."
     },
     {
-      "severity": "nit",
-      "agent": "reviewer",
-      "description": "The dueDate value is stored as the raw input string with no normalization to a canonical UTC ISO string. Inputs like '2025-06-15T10:00:00+05:30' will be stored verbatim, making downstream sorting or comparison by dueDate unreliable. Consider normalizing with new Date(dueDate).toISOString() after validation."
+      "severity": "low",
+      "agent": "security",
+      "description": "`critique.json` appears to be an auto-generated CI/AI review artifact that has been accidentally committed. It exposes internal tooling details and non-standard model identifiers. It should be removed from the PR and added to `.gitignore` to prevent accumulation of sensitive diagnostic output in repo history."
     }
   ]
 }
