@@ -21,16 +21,20 @@ router.get("/:id", (req, res) => {
 
 // POST /todos — create
 router.post("/", (req, res) => {
-  const { title } = req.body;
+  const { title, dueDate } = req.body;
   if (!title || typeof title !== "string" || title.trim() === "") {
     return res
       .status(400)
       .json({ error: "title is required and must be a non-empty string" });
   }
+  if (dueDate !== undefined && isNaN(Date.parse(dueDate))) {
+    return res.status(400).json({ error: "dueDate must be a valid ISO date string" });
+  }
   const todo = {
     id: nextId++,
     title: title.trim(),
     done: false,
+    dueDate: dueDate || null,
     createdAt: new Date().toISOString(),
   };
   todos.push(todo);

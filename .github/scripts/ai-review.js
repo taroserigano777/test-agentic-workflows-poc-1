@@ -14,7 +14,7 @@ const https = require('https');
 
 // --------------- Config ---------------
 
-const CLAUDE_MODEL = 'claude-haiku-4-5-20251001'; // fast + cheap; swap to claude-sonnet-4-6 for higher quality
+const CLAUDE_MODEL = 'claude-sonnet-4-6'; // high quality reviews
 const MAX_DIFF_CHARS = 12000; // keep token usage reasonable
 const CONFIDENCE_THRESHOLD = 90;
 const MAX_LINES_FOR_AUTO = 200;

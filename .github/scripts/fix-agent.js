@@ -22,7 +22,7 @@
 const https = require('https');
 const fs = require('fs');
 
-const CLAUDE_MODEL = 'claude-haiku-4-5-20251001'; // swap to claude-sonnet-4-6 for higher quality
+const CLAUDE_MODEL = 'claude-sonnet-4-6'; // high quality fixes
 const MAX_FILE_CHARS = 4000; // per file, to keep prompts lean
 
 // --------------- Claude (Anthropic) helper ---------------
