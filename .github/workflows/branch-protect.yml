@@ -5,6 +5,10 @@ on:
     types: [opened, synchronize, edited]
     branches: [main]
 
+concurrency:
+  group: branch-protect-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     name: Validate PR & Commits

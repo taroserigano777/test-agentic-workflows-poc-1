@@ -46,15 +46,33 @@ jobs:
             const fs = require('fs');
             const tag = context.ref.replace('refs/tags/', '');
 
-            // Generate changelog from commits since last tag
-            const { data: commits } = await github.rest.repos.listCommits({
+            // Find the previous tag to scope the changelog
+            const { data: tags } = await github.rest.repos.listTags({
               owner: context.repo.owner,
               repo: context.repo.repo,
-              per_page: 50,
+              per_page: 10,
             });
+            const prevTag = tags.find(t => t.name !== tag);
 
-            const changelog = commits
-              .slice(0, 20)
+            // Fetch commits since previous tag (or last 50 if no prior tag)
+            const listOpts = {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              per_page: 100,
+            };
+            if (prevTag) {
+              listOpts.sha = tag;
+            }
+            const { data: commits } = await github.rest.repos.listCommits(listOpts);
+
+            // If we have a previous tag, stop at its commit
+            let relevant = commits;
+            if (prevTag) {
+              const cutoff = commits.findIndex(c => c.sha === prevTag.commit.sha);
+              if (cutoff > 0) relevant = commits.slice(0, cutoff);
+            }
+
+            const changelog = relevant
               .map(c => `- ${c.commit.message.split('\n')[0]} (${c.sha.slice(0, 7)})`)
               .join('\n');
 

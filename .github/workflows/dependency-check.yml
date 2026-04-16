@@ -31,8 +31,8 @@ jobs:
         id: audit
         continue-on-error: true
         run: |
-          npm audit --json > audit-results.json 2>&1
-          VULN_COUNT=$(node -e "const a=require('./audit-results.json'); console.log(a.metadata?.vulnerabilities?.total || 0)")
+          npm audit --json > audit-results.json 2>/dev/null || true
+          VULN_COUNT=$(node -e "try { const a=require('./audit-results.json'); console.log(a.metadata?.vulnerabilities?.total || 0) } catch { console.log(0) }")
           echo "vuln_count=$VULN_COUNT" >> "$GITHUB_OUTPUT"
           echo "Found $VULN_COUNT vulnerabilities"
 

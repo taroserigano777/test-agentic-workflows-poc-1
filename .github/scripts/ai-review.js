@@ -73,6 +73,9 @@ function callClaude(systemPrompt, userPrompt) {
       });
     });
 
+    req.setTimeout(30000, () => {
+      req.destroy(new Error('Claude API request timed out after 30s'));
+    });
     req.on('error', reject);
     req.write(body);
     req.end();
