@@ -62,12 +62,19 @@ jobs:
             const details = `${{ steps.smoke.outputs.details }}`;
             const emoji = result === 'passed' ? '✅' : '❌';
 
+            const rows = details.split(' | ').map(d => {
+              const parts = d.split(' ');
+              const status = parts.pop();
+              const name = parts.join(' ');
+              return `| ${name} | ${status} |`;
+            });
+
             const body = [
               `## ${emoji} Deploy Preview — Smoke Test ${result.toUpperCase()}`,
               '',
               '| Endpoint | Status |',
               '|----------|--------|',
-              ...details.split(' | ').map(d => `| ${d.split(':')[0] || d} | ${d} |`),
+              ...rows,
               '',
               `_Tested against \`${context.sha.slice(0, 7)}\`_`,
             ].join('\n');

@@ -11,6 +11,7 @@
  */
 
 const https = require('https');
+const fs = require('fs');
 
 // --------------- Config ---------------
 
@@ -98,6 +99,9 @@ function githubAPI(method, path, body) {
       let data = '';
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          console.error(`GitHub API ${method} ${path} → HTTP ${res.statusCode}: ${data.slice(0, 200)}`);
+        }
         try {
           resolve(data ? JSON.parse(data) : {});
         } catch {
@@ -199,16 +203,29 @@ Output EXACTLY this JSON (no markdown fences, no extra text):
 // --------------- Main pipeline ---------------
 
 async function main() {
-  const diff = (process.env.PR_DIFF || '').slice(0, MAX_DIFF_CHARS);
+  // Read diff from file (avoids shell env size limits) or fall back to env var
+  const diffFile = process.env.PR_DIFF_FILE;
+  let rawDiff = '';
+  if (diffFile && fs.existsSync(diffFile)) {
+    rawDiff = fs.readFileSync(diffFile, 'utf8');
+  } else {
+    rawDiff = process.env.PR_DIFF || '';
+  }
+
+  if (!rawDiff.trim()) {
+    console.error('No diff available — cannot run AI review.');
+    process.exit(1);
+  }
+
+  if (rawDiff.length > MAX_DIFF_CHARS) {
+    console.log(`WARNING: Diff is ${rawDiff.length} chars, truncating to ${MAX_DIFF_CHARS}. Findings beyond this point will be missed.`);
+  }
+  const diff = rawDiff.slice(0, MAX_DIFF_CHARS);
+
   const prTitle = process.env.PR_TITLE || '';
   const prBody = process.env.PR_BODY || '';
   const prNumber = process.env.PR_NUMBER;
   const linesChanged = parseInt(process.env.LINES_CHANGED || '0', 10);
-
-  if (!diff) {
-    console.log('No diff provided, skipping AI review.');
-    return;
-  }
 
   const userContext = `# PR: ${prTitle}\n\n${prBody}\n\n# Diff:\n\`\`\`\n${diff}\n\`\`\``;
 
@@ -245,7 +262,6 @@ async function main() {
   }
 
   // Persist critique for the fix-agent to consume as a workflow artifact
-  const fs = require('fs');
   fs.writeFileSync('critique.json', JSON.stringify(critique, null, 2));
 
   // --------------- Build PR comment ---------------
@@ -326,5 +342,12 @@ async function main() {
 
 main().catch((err) => {
   console.error('AI Review failed:', err.message);
+  // Write safe defaults so downstream jobs don't get undefined outputs
+  const outputFile = process.env.GITHUB_OUTPUT;
+  if (outputFile) {
+    fs.appendFileSync(outputFile, 'verdict=FAIL\n');
+    fs.appendFileSync(outputFile, 'confidence=0\n');
+    fs.appendFileSync(outputFile, 'auto_merge_eligible=false\n');
+  }
   process.exit(1);
 });

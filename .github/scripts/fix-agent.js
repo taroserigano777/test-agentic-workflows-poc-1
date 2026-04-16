@@ -21,6 +21,7 @@
 
 const https = require('https');
 const fs = require('fs');
+const path = require('path');
 
 const CLAUDE_MODEL = 'claude-sonnet-4-6'; // high quality fixes
 const MAX_FILE_CHARS = 4000; // per file, to keep prompts lean
@@ -106,6 +107,9 @@ function githubAPI(method, urlPath, body) {
       let data = '';
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          console.error(`GitHub API ${method} ${urlPath} → HTTP ${res.statusCode}: ${data.slice(0, 200)}`);
+        }
         try { resolve(data ? JSON.parse(data) : {}); } catch { resolve({}); }
       });
     });
@@ -165,7 +169,14 @@ async function main() {
     process.exit(0);
   }
 
-  const critique = JSON.parse(fs.readFileSync(critiqueFile, 'utf8'));
+  let critique;
+  try {
+    critique = JSON.parse(fs.readFileSync(critiqueFile, 'utf8'));
+  } catch (e) {
+    console.error(`Failed to parse ${critiqueFile}: ${e.message}`);
+    await postComment(`🤖 **Fix Agent (Iteration ${fixIteration}):** critique.json is corrupted. Manual review required.`);
+    process.exit(0);
+  }
   const actionable = (critique.findings || []).filter(
     (f) => f.severity === 'critical' || f.severity === 'high'
   );
@@ -184,9 +195,16 @@ async function main() {
     `/repos/${REPO_OWNER}/${REPO_NAME}/pulls/${PR_NUMBER}/files`
   );
 
+  const repoRoot = process.cwd();
   const fileContents = {};
   if (Array.isArray(prFiles)) {
     for (const f of prFiles) {
+      // Block path traversal — only allow files inside the repo root
+      const resolved = path.resolve(repoRoot, f.filename);
+      if (!resolved.startsWith(repoRoot + path.sep) && resolved !== repoRoot) {
+        console.log(`  Skipping unsafe path: ${f.filename}`);
+        continue;
+      }
       if (fs.existsSync(f.filename)) {
         fileContents[f.filename] = fs.readFileSync(f.filename, 'utf8').slice(0, MAX_FILE_CHARS);
       }
@@ -244,6 +262,11 @@ async function main() {
 
     if (!file || original === undefined || replacement === undefined) {
       failed.push({ file: file || '?', reason: 'malformed patch (missing fields)' });
+      continue;
+    }
+    const resolvedPatch = path.resolve(repoRoot, file);
+    if (!resolvedPatch.startsWith(repoRoot + path.sep) && resolvedPatch !== repoRoot) {
+      failed.push({ file, reason: 'path traversal blocked' });
       continue;
     }
     if (!fs.existsSync(file)) {
