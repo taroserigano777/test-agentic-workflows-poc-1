@@ -1,6 +1,6 @@
-"use strict";
+'use strict';
 
-const express = require("express");
+const express = require('express');
 const router = express.Router();
 
 // In-memory store (replace with a DB in production)
@@ -8,29 +8,36 @@ let todos = [];
 let nextId = 1;
 
 // GET /todos — list all
-router.get("/", (_req, res) => {
+router.get('/', (_req, res) => {
   res.json(todos);
 });
 
 // GET /todos/:id — get one
-router.get("/:id", (req, res) => {
+router.get('/:id', (req, res) => {
   const todo = todos.find((t) => t.id === parseInt(req.params.id));
-  if (!todo) return res.status(404).json({ error: "Todo not found" });
+  if (!todo) return res.status(404).json({ error: 'Todo not found' });
   res.json(todo);
 });
 
 // POST /todos — create
-router.post("/", (req, res) => {
-  const { title } = req.body;
-  if (!title || typeof title !== "string" || title.trim() === "") {
+router.post('/', (req, res) => {
+  const { title, dueDate } = req.body;
+  if (!title || typeof title !== 'string' || title.trim() === '') {
     return res
       .status(400)
-      .json({ error: "title is required and must be a non-empty string" });
+      .json({ error: 'title is required and must be a non-empty string' });
+  }
+  if (dueDate !== undefined) {
+    const isoRegex = /^\d{4}-\d{2}-\d{2}(T[\d:.]+Z?([+-]\d{2}:\d{2})?)?$/;
+    if (typeof dueDate !== 'string' || !isoRegex.test(dueDate) || isNaN(Date.parse(dueDate))) {
+      return res.status(400).json({ error: 'dueDate must be a valid ISO date string' });
+    }
   }
   const todo = {
     id: nextId++,
     title: title.trim(),
     done: false,
+    dueDate: dueDate ?? null,
     createdAt: new Date().toISOString(),
   };
   todos.push(todo);
@@ -38,22 +45,22 @@ router.post("/", (req, res) => {
 });
 
 // PATCH /todos/:id — update
-router.patch("/:id", (req, res) => {
+router.patch('/:id', (req, res) => {
   const todo = todos.find((t) => t.id === parseInt(req.params.id));
-  if (!todo) return res.status(404).json({ error: "Todo not found" });
+  if (!todo) return res.status(404).json({ error: 'Todo not found' });
 
   const { title, done } = req.body;
   if (title !== undefined) {
-    if (typeof title !== "string" || title.trim() === "") {
+    if (typeof title !== 'string' || title.trim() === '') {
       return res
         .status(400)
-        .json({ error: "title must be a non-empty string" });
+        .json({ error: 'title must be a non-empty string' });
     }
     todo.title = title.trim();
   }
   if (done !== undefined) {
-    if (typeof done !== "boolean") {
-      return res.status(400).json({ error: "done must be a boolean" });
+    if (typeof done !== 'boolean') {
+      return res.status(400).json({ error: 'done must be a boolean' });
     }
     todo.done = done;
   }
@@ -62,9 +69,9 @@ router.patch("/:id", (req, res) => {
 });
 
 // DELETE /todos/:id — delete
-router.delete("/:id", (req, res) => {
+router.delete('/:id', (req, res) => {
   const index = todos.findIndex((t) => t.id === parseInt(req.params.id));
-  if (index === -1) return res.status(404).json({ error: "Todo not found" });
+  if (index === -1) return res.status(404).json({ error: 'Todo not found' });
   todos.splice(index, 1);
   res.status(204).send();
 });

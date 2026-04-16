@@ -65,15 +65,13 @@ jobs:
           path: critique.json
           retention-days: 1
 
-  # ---- Fix Agent Loop ----
+  # ---- Fix Agent Loop (disabled) ----
   # Runs when AI verdict is FAIL or WARN, up to 3 iterations.
   # Checks out with FIX_AGENT_PAT so the push re-triggers this workflow.
   fix-loop:
     name: Fix Agent
     needs: ai-review
-    if: |
-      needs.ai-review.outputs.verdict == 'FAIL' ||
-      needs.ai-review.outputs.verdict == 'WARN'
+    if: false  # disabled — re-enable by replacing with: needs.ai-review.outputs.verdict == 'FAIL' || needs.ai-review.outputs.verdict == 'WARN'
     runs-on: ubuntu-latest
     permissions:
       contents: write
