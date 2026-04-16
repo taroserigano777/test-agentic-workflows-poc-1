@@ -10,8 +10,8 @@
  * creating the review → fix → re-review loop.
  *
  * Required env vars:
- *   OPENAI_API_KEY   — OpenAI key
- *   GITHUB_TOKEN     — for GitHub API (read PR files, post comments)
+ *   ANTHROPIC_API_KEY — Anthropic key
+ *   GITHUB_TOKEN      — for GitHub API (read PR files, post comments)
  *   CRITIQUE_FILE    — path to critique.json (default: critique.json)
  *   REPO_OWNER       — e.g. "taroserigano777"
  *   REPO_NAME        — e.g. "test-agentic-workflo___2"
@@ -22,7 +22,7 @@
 const https = require('https');
 const fs = require('fs');
 
-const CLAUDE_MODEL = 'claude-haiku-4-5-20251001'; // swap to claude-sonnet-4-6 for higher quality
+const CLAUDE_MODEL = 'claude-sonnet-4-6'; // high quality fixes
 const MAX_FILE_CHARS = 4000; // per file, to keep prompts lean
 
 // --------------- Claude (Anthropic) helper ---------------
@@ -204,8 +204,8 @@ async function main() {
     .map((f, i) => `${i + 1}. [${f.severity}] (${f.agent}): ${f.description}`)
     .join('\n');
 
-  // 3. Ask OpenAI for patches
-  console.log('\nCalling OpenAI for fix patches...');
+  // 3. Ask Claude for patches
+  console.log('\nCalling Claude for fix patches...');
   const rawPatches = await callClaude(
     FIX_SYSTEM_PROMPT,
     `## Files\n${fileContext}\n\n## Findings to Fix\n${findingsList}`
