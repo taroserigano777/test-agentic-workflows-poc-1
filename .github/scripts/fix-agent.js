@@ -22,30 +22,37 @@
 const https = require('https');
 const fs = require('fs');
 
-const OPENAI_MODEL = 'gpt-4o-mini';
+const CLAUDE_MODEL = 'claude-haiku-4-5-20251001'; // swap to claude-sonnet-4-6 for higher quality
 const MAX_FILE_CHARS = 4000; // per file, to keep prompts lean
 
-// --------------- OpenAI helper ---------------
+// --------------- Claude (Anthropic) helper ---------------
 
-function callOpenAI(systemPrompt, userPrompt) {
+function callClaude(systemPrompt, userPrompt) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
-      model: OPENAI_MODEL,
+      model: CLAUDE_MODEL,
+      max_tokens: 3000,
+      system: [
+        {
+          type: 'text',
+          text: systemPrompt,
+          cache_control: { type: 'ephemeral' }, // cache static system prompt across retries
+        },
+      ],
       messages: [
-        { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      temperature: 0.2,
-      max_tokens: 3000,
     });
 
     const options = {
-      hostname: 'api.openai.com',
-      path: '/v1/chat/completions',
+      hostname: 'api.anthropic.com',
+      path: '/v1/messages',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'prompt-caching-2024-07-31',
         'Content-Length': Buffer.byteLength(body),
       },
     };
@@ -57,9 +64,9 @@ function callOpenAI(systemPrompt, userPrompt) {
         try {
           const parsed = JSON.parse(data);
           if (parsed.error) return reject(new Error(parsed.error.message));
-          resolve(parsed.choices[0].message.content.trim());
+          resolve(parsed.content[0].text.trim());
         } catch (e) {
-          reject(new Error(`Failed to parse OpenAI response: ${e.message}`));
+          reject(new Error(`Failed to parse Claude response: ${e.message}`));
         }
       });
     });
@@ -199,7 +206,7 @@ async function main() {
 
   // 3. Ask OpenAI for patches
   console.log('\nCalling OpenAI for fix patches...');
-  const rawPatches = await callOpenAI(
+  const rawPatches = await callClaude(
     FIX_SYSTEM_PROMPT,
     `## Files\n${fileContext}\n\n## Findings to Fix\n${findingsList}`
   );

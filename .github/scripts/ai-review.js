@@ -14,34 +14,44 @@ const https = require('https');
 
 // --------------- Config ---------------
 
-const OPENAI_MODEL = 'gpt-4o-mini';
+const CLAUDE_MODEL = 'claude-haiku-4-5-20251001'; // fast + cheap; swap to claude-sonnet-4-6 for higher quality
 const MAX_DIFF_CHARS = 12000; // keep token usage reasonable
 const CONFIDENCE_THRESHOLD = 90;
 const MAX_LINES_FOR_AUTO = 200;
 
 const REVIEW_MODE = process.env.REVIEW_MODE || 'observer';
 
-// --------------- OpenAI helper ---------------
+// --------------- Claude (Anthropic) helper ---------------
+// System prompts are sent with cache_control so repeated runs hit the prompt cache,
+// reducing latency and cost on every PR re-run.
 
-function callOpenAI(systemPrompt, userPrompt) {
+function callClaude(systemPrompt, userPrompt) {
   return new Promise((resolve, reject) => {
     const body = JSON.stringify({
-      model: OPENAI_MODEL,
+      model: CLAUDE_MODEL,
+      max_tokens: 1500,
+      system: [
+        {
+          type: 'text',
+          text: systemPrompt,
+          cache_control: { type: 'ephemeral' }, // cache static system prompts
+        },
+      ],
       messages: [
-        { role: 'system', content: systemPrompt },
         { role: 'user', content: userPrompt },
       ],
-      temperature: 0.3,
-      max_tokens: 1500,
     });
 
     const options = {
-      hostname: 'api.openai.com',
-      path: '/v1/chat/completions',
+      hostname: 'api.anthropic.com',
+      path: '/v1/messages',
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-beta': 'prompt-caching-2024-07-31',
+        'Content-Length': Buffer.byteLength(body),
       },
     };
 
@@ -52,9 +62,9 @@ function callOpenAI(systemPrompt, userPrompt) {
         try {
           const parsed = JSON.parse(data);
           if (parsed.error) return reject(new Error(parsed.error.message));
-          resolve(parsed.choices[0].message.content.trim());
+          resolve(parsed.content[0].text.trim());
         } catch (e) {
-          reject(new Error(`Failed to parse OpenAI response: ${e.message}`));
+          reject(new Error(`Failed to parse Claude response: ${e.message}`));
         }
       });
     });
@@ -203,16 +213,16 @@ async function main() {
 
   // Parallel agent calls
   const [reviewerOutput, editorOutput, securityOutput] = await Promise.all([
-    callOpenAI(REVIEWER_PROMPT, userContext),
-    callOpenAI(EDITOR_PROMPT, userContext),
-    callOpenAI(SECURITY_PROMPT, userContext),
+    callClaude(REVIEWER_PROMPT, userContext),
+    callClaude(EDITOR_PROMPT, userContext),
+    callClaude(SECURITY_PROMPT, userContext),
   ]);
 
   console.log('Reviewer done. Editor done. Security done.');
   console.log('Running Critique Agent...');
 
   // Sequential critique
-  const critiqueRaw = await callOpenAI(
+  const critiqueRaw = await callClaude(
     'You are a precise JSON output machine. Follow instructions exactly.',
     buildCritiquePrompt(reviewerOutput, editorOutput, securityOutput)
   );
@@ -290,7 +300,7 @@ async function main() {
     '---',
     mergeAction,
     '',
-    `> _AI Review by 4 agents (${OPENAI_MODEL}) • ${new Date().toISOString()}_`,
+    `> _AI Review by 4 agents (${CLAUDE_MODEL}) • ${new Date().toISOString()}_`,
   ].join('\n');
 
   console.log('Posting comment to PR...');

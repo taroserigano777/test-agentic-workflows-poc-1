@@ -43,7 +43,7 @@ jobs:
       - name: Run AI Review Agents
         id: review
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_DIFF: ${{ github.event.pull_request.diff_url }}
           PR_TITLE: ${{ github.event.pull_request.title }}
@@ -124,7 +124,7 @@ jobs:
       - name: Run Fix Agent
         if: steps.iteration.outputs.max_reached == 'false'
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CRITIQUE_FILE: critique.json
           PR_NUMBER: ${{ github.event.pull_request.number }}
