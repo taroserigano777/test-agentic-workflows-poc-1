@@ -28,7 +28,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Get PR diff
         id: diff
@@ -89,7 +89,7 @@ jobs:
 
     steps:
       - name: Checkout with PAT (enables push re-trigger)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           token: ${{ secrets.FIX_AGENT_PAT }}
           ref: ${{ github.head_ref }}
